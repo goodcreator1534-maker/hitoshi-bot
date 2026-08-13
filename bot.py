@@ -27,14 +27,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 RESPONSES = [
-    {"text": "クイヤ", "image": "images/A27C1210-03FE-4AB9-815B-C30E408F28BE.jpg"},
-    {"text": "よかったこの距離で", "image": "images/85E814A3-130F-40E1-90C8-1C615720989B.jpg"},
-    {"text": "浜田の嫁に電話するとか", "image": "images/D032939C-E1D0-4443-A7DB-A48E09631DDE.jpg"},
-    {"text": "最後の餃子か", "image": "images/CDDF6F97-3FDA-4554-A7A1-6627D06808C7.jpg"},
-    {"text": "定食屋のテレビの位置やで", "image": "images/FAA98AEF-7089-43E3-98C9-20D666E4BB14.jpg"},
-    {"text": "お祭り男か", "image": "images/7B85B083-E5F4-41E5-BF0C-ECD5025E8426.jpg"},
-    {"text": "...", "image": "images/3C83EDED-1A52-4B1C-853F-6371C200F9A7.jpg"},
-    {"text": "「サザエでございます」みたいに言うな", "image": "images/F3FBF19F-96B2-45E3-AEC0-20BF98A9BC2C.jpg"},
+    {"text": "クイヤ", "image": "images/IMG_9158.jpeg"},
+    {"text": "よかったこの距離で", "image": "images/IMG_9159.jpeg"},
+    {"text": "浜田の嫁に電話するとか", "image": "images/IMG_9160.jpeg"},
+    {"text": "最後の餃子か", "image": "images/IMG_9161.jpeg"},
+    {"text": "定食屋のテレビの位置やで", "image": "images/IMG_9162.jpeg"},
+    {"text": "お祭り男か", "image": "images/IMG_9163.jpeg"},
+    {"text": "...", "image": "images/IMG_9164.jpeg"},
+    {"text": "「サザエでございます」みたいに言うな", "image": "images/IMG_9165.jpeg"},
 ]
 
 @bot.event
