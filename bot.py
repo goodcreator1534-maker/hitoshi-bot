@@ -40,7 +40,22 @@ RESPONSES = [
 @bot.event
 async def on_ready():
     print(f"ログイン: {bot.user}")
+    try:
+        synced = await bot.tree.sync()
+        print(f"スラッシュコマンド {len(synced)}個 同期完了")
+    except Exception as e:
+        print(f"同期エラー: {e}")
 
+# ===== スラッシュコマンド =====
+@bot.tree.command(name="松本", description="ランダムに松本ミームを送信する")
+async def matsumoto(interaction: discord.Interaction):
+    choice = random.choice(RESPONSES)
+    await interaction.response.send_message(
+        content=choice["text"],
+        file=discord.File(choice["image"])
+    )
+
+# ===== メンション反応（従来通り）=====
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
