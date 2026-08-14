@@ -35,7 +35,7 @@ RESPONSES = [
     {"text": "「サザエでございます」みたいに言うな", "image": "images/IMG_9163.jpeg"},
     {"text": "...", "image": "images/IMG_9164.jpeg"},
     {"text": "浜田の嫁に電話するとか", "image": "images/IMG_9165.jpeg"},
-    {"text": "あつかい", "image": "images/IMG_9165.jpeg"},
+    {"text": "すみません難しいタレントで", "image": "images/IMG_9203.jpeg"},
 ]
 
 @bot.event
