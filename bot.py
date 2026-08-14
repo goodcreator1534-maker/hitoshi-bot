@@ -1,6 +1,7 @@
 import discord
 import random
 import os
+import sys
 import traceback
 from discord.ext import commands
 from flask import Flask
@@ -22,16 +23,20 @@ def keep_alive():
 
 # ===== Discord Bot =====
 TOKEN = os.environ.get("TOKEN", "")
+print(f"[DEBUG] TOKEN: {'設定済み' if TOKEN else '未設定'}", flush=True)
+
 if not TOKEN:
-    print("ERROR: 環境変数 TOKEN が設定されていません")
-    raise SystemExit("TOKEN not set")
+    print("[FATAL] 環境変数 TOKEN が設定されていません", flush=True)
+    sys.exit(1)
+
+print(f"[DEBUG] discord.py バージョン: {discord.__version__}", flush=True)
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# スクリプトのある場所を基準に絶対パスを作る（Render対策）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+print(f"[DEBUG] BASE_DIR: {BASE_DIR}", flush=True)
 
 RESPONSES = [
     {"text": "よかったこの距離で", "image": "images/IMG_9158.jpeg"},
@@ -45,20 +50,18 @@ RESPONSES = [
     {"text": "すみません難しいタレントで", "image": "images/IMG_9203.jpeg"},
 ]
 
-# 相対パス → 絶対パスに変換
 for item in RESPONSES:
     item["image"] = os.path.join(BASE_DIR, item["image"])
+    print(f"[DEBUG] {item['image']} 存在: {os.path.exists(item['image'])}", flush=True)
 
 @bot.event
 async def on_ready():
-    print(f"ログイン成功: {bot.user} (ID: {bot.user.id})")
+    print(f"[DEBUG] ログイン成功: {bot.user}", flush=True)
     try:
         synced = await bot.tree.sync()
-        print(f"グローバルコマンド同期完了: {len(synced)}個")
-        for cmd in synced:
-            print(f"  - /{cmd.name}")
+        print(f"[DEBUG] グローバルコマンド同期完了: {len(synced)}個", flush=True)
     except Exception as e:
-        print(f"同期エラー: {e}")
+        print(f"[ERROR] 同期エラー: {e}", flush=True)
         traceback.print_exc()
 
 @bot.tree.command(name="松本", description="ランダムに松本ミームを送信する")
@@ -66,36 +69,27 @@ async def matsumoto(interaction: discord.Interaction):
     choice = random.choice(RESPONSES)
     img_path = choice["image"]
     
-    print(f"[松本] 選択: {choice['text']} | 画像存在: {os.path.exists(img_path)}")
-    
     if not os.path.exists(img_path):
         await interaction.response.send_message(
             content=f"{choice['text']}\n⚠️画像が見つかりません: `{img_path}`"
         )
         return
     
-    try:
-        await interaction.response.send_message(
-            content=choice["text"],
-            file=discord.File(img_path)
-        )
-    except Exception as e:
-        print(f"[松本] 送信エラー: {e}")
-        traceback.print_exc()
-        if not interaction.response.is_done():
-            await interaction.response.send_message("送信中にエラーが出ました", ephemeral=True)
+    await interaction.response.send_message(
+        content=choice["text"],
+        file=discord.File(img_path)
+    )
 
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
-    await bot.process_commands(message)  # ← これがないと !command が死ぬ
+    await bot.process_commands(message)
     if bot.user not in message.mentions:
         return
     
     choice = random.choice(RESPONSES)
     img_path = choice["image"]
-    
     if os.path.exists(img_path):
         await message.channel.send(content=choice["text"], file=discord.File(img_path))
     else:
@@ -103,10 +97,16 @@ async def on_message(message):
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
-    print(f"スラッシュコマンドエラー: {error}")
-    traceback.print_exc()
+    print(f"[ERROR] スラッシュコマンドエラー: {error}", flush=True)
     if not interaction.response.is_done():
         await interaction.response.send_message("エラーが発生しました", ephemeral=True)
 
 keep_alive()
-bot.run(TOKEN)
+
+print("[DEBUG] bot.run() を開始します", flush=True)
+try:
+    bot.run(TOKEN)
+except Exception as e:
+    print(f"[FATAL] bot.run() 例外: {e}", flush=True)
+    traceback.print_exc()
+    sys.exit(1)
