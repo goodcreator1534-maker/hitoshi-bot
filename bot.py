@@ -38,37 +38,72 @@ RESPONSES = [
     {"text": "すみません難しいタレントで", "image": "images/IMG_9203.jpeg"},
 ]
 
+_synced = False
+
 @bot.event
 async def on_ready():
+    global _synced
     print(f"ログイン: {bot.user}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"スラッシュコマンド {len(synced)}個 同期完了")
-    except Exception as e:
-        print(f"同期エラー: {e}")
+    
+    # 同期は初回1回だけ（再接続時の重複防止）
+    if not _synced:
+        try:
+            synced = await bot.tree.sync()
+            print(f"グローバルコマンド {len(synced)}個 同期完了")
+            _synced = True
+        except Exception as e:
+            print(f"同期エラー: {e}")
 
 # ===== スラッシュコマンド =====
 @bot.tree.command(name="松本", description="ランダムに松本ミームを送信する")
 async def matsumoto(interaction: discord.Interaction):
     choice = random.choice(RESPONSES)
+    image_path = choice["image"]
+    
+    # 画像が見つからない場合のフォールバック（これがないと「応答しません」になる）
+    if not os.path.exists(image_path):
+        print(f"画像が見つかりません: {image_path}")
+        await interaction.response.send_message(
+            content=f"{choice['text']}\n⚠️画像が見つかりません: `{image_path}`"
+        )
+        return
+    
     await interaction.response.send_message(
         content=choice["text"],
-        file=discord.File(choice["image"])
+        file=discord.File(image_path)
     )
 
-# ===== メンション反応（従来通り）=====
+# ===== メンション反応 =====
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
+    
+    # プレフィックスコマンド処理を維持（!command 用）
+    await bot.process_commands(message)
+    
     if bot.user not in message.mentions:
         return
 
     choice = random.choice(RESPONSES)
-    await message.channel.send(
-        content=choice["text"],
-        file=discord.File(choice["image"])
-    )
+    image_path = choice["image"]
+    
+    if os.path.exists(image_path):
+        await message.channel.send(
+            content=choice["text"],
+            file=discord.File(image_path)
+        )
+    else:
+        await message.channel.send(
+            content=f"{choice['text']}\n⚠️画像が見つかりません: `{image_path}`"
+        )
+
+# ===== エラーハンドリング（必須）=====
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    print(f"コマンドエラー: {error}")
+    if not interaction.response.is_done():
+        await interaction.response.send_message("エラーが発生しました", ephemeral=True)
 
 keep_alive()
 bot.run(TOKEN)
