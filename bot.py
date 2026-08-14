@@ -23,20 +23,18 @@ def keep_alive():
 
 # ===== Discord Bot =====
 TOKEN = os.environ.get("TOKEN", "")
-print(f"[DEBUG] TOKEN: {'設定済み' if TOKEN else '未設定'}", flush=True)
 
 if not TOKEN:
-    print("[FATAL] 環境変数 TOKEN が設定されていません", flush=True)
-    sys.exit(1)
-
-print(f"[DEBUG] discord.py バージョン: {discord.__version__}", flush=True)
+    print("FATAL: 環境変数 TOKEN が設定されていません")
+    print("Render Dashboard → Environment → TOKEN を追加してください")
+    # エラーを出して落ちる（Renderに原因を表示させる）
+    raise ValueError("TOKEN environment variable is not set")
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-print(f"[DEBUG] BASE_DIR: {BASE_DIR}", flush=True)
 
 RESPONSES = [
     {"text": "よかったこの距離で", "image": "images/IMG_9158.jpeg"},
@@ -52,17 +50,15 @@ RESPONSES = [
 
 for item in RESPONSES:
     item["image"] = os.path.join(BASE_DIR, item["image"])
-    print(f"[DEBUG] {item['image']} 存在: {os.path.exists(item['image'])}", flush=True)
 
 @bot.event
 async def on_ready():
-    print(f"[DEBUG] ログイン成功: {bot.user}", flush=True)
+    print(f"ログイン成功: {bot.user}")
     try:
         synced = await bot.tree.sync()
-        print(f"[DEBUG] グローバルコマンド同期完了: {len(synced)}個", flush=True)
+        print(f"グローバルコマンド同期完了: {len(synced)}個")
     except Exception as e:
-        print(f"[ERROR] 同期エラー: {e}", flush=True)
-        traceback.print_exc()
+        print(f"同期エラー: {e}")
 
 @bot.tree.command(name="松本", description="ランダムに松本ミームを送信する")
 async def matsumoto(interaction: discord.Interaction):
@@ -97,16 +93,9 @@ async def on_message(message):
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
-    print(f"[ERROR] スラッシュコマンドエラー: {error}", flush=True)
+    print(f"スラッシュコマンドエラー: {error}")
     if not interaction.response.is_done():
         await interaction.response.send_message("エラーが発生しました", ephemeral=True)
 
 keep_alive()
-
-print("[DEBUG] bot.run() を開始します", flush=True)
-try:
-    bot.run(TOKEN)
-except Exception as e:
-    print(f"[FATAL] bot.run() 例外: {e}", flush=True)
-    traceback.print_exc()
-    sys.exit(1)
+bot.run(TOKEN)
