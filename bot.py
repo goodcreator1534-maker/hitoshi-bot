@@ -1,6 +1,7 @@
 import discord
 import random
 import os
+import traceback
 from discord.ext import commands
 from flask import Flask
 from threading import Thread
@@ -16,15 +17,21 @@ def run():
     app.run(host='0.0.0.0', port=10000)
 
 def keep_alive():
-    t = Thread(target=run)
+    t = Thread(target=run, daemon=True)
     t.start()
 
 # ===== Discord Bot =====
-TOKEN = os.environ["TOKEN"]
+TOKEN = os.environ.get("TOKEN", "")
+if not TOKEN:
+    print("ERROR: 環境変数 TOKEN が設定されていません")
+    raise SystemExit("TOKEN not set")
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# スクリプトのある場所を基準に絶対パスを作る（Render対策）
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 RESPONSES = [
     {"text": "よかったこの距離で", "image": "images/IMG_9158.jpeg"},
@@ -38,70 +45,66 @@ RESPONSES = [
     {"text": "すみません難しいタレントで", "image": "images/IMG_9203.jpeg"},
 ]
 
-_synced = False
+# 相対パス → 絶対パスに変換
+for item in RESPONSES:
+    item["image"] = os.path.join(BASE_DIR, item["image"])
 
 @bot.event
 async def on_ready():
-    global _synced
-    print(f"ログイン: {bot.user}")
-    
-    # 同期は初回1回だけ（再接続時の重複防止）
-    if not _synced:
-        try:
-            synced = await bot.tree.sync()
-            print(f"グローバルコマンド {len(synced)}個 同期完了")
-            _synced = True
-        except Exception as e:
-            print(f"同期エラー: {e}")
+    print(f"ログイン成功: {bot.user} (ID: {bot.user.id})")
+    try:
+        synced = await bot.tree.sync()
+        print(f"グローバルコマンド同期完了: {len(synced)}個")
+        for cmd in synced:
+            print(f"  - /{cmd.name}")
+    except Exception as e:
+        print(f"同期エラー: {e}")
+        traceback.print_exc()
 
-# ===== スラッシュコマンド =====
 @bot.tree.command(name="松本", description="ランダムに松本ミームを送信する")
 async def matsumoto(interaction: discord.Interaction):
     choice = random.choice(RESPONSES)
-    image_path = choice["image"]
+    img_path = choice["image"]
     
-    # 画像が見つからない場合のフォールバック（これがないと「応答しません」になる）
-    if not os.path.exists(image_path):
-        print(f"画像が見つかりません: {image_path}")
+    print(f"[松本] 選択: {choice['text']} | 画像存在: {os.path.exists(img_path)}")
+    
+    if not os.path.exists(img_path):
         await interaction.response.send_message(
-            content=f"{choice['text']}\n⚠️画像が見つかりません: `{image_path}`"
+            content=f"{choice['text']}\n⚠️画像が見つかりません: `{img_path}`"
         )
         return
     
-    await interaction.response.send_message(
-        content=choice["text"],
-        file=discord.File(image_path)
-    )
+    try:
+        await interaction.response.send_message(
+            content=choice["text"],
+            file=discord.File(img_path)
+        )
+    except Exception as e:
+        print(f"[松本] 送信エラー: {e}")
+        traceback.print_exc()
+        if not interaction.response.is_done():
+            await interaction.response.send_message("送信中にエラーが出ました", ephemeral=True)
 
-# ===== メンション反応 =====
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
-    
-    # プレフィックスコマンド処理を維持（!command 用）
-    await bot.process_commands(message)
-    
+    await bot.process_commands(message)  # ← これがないと !command が死ぬ
     if bot.user not in message.mentions:
         return
-
-    choice = random.choice(RESPONSES)
-    image_path = choice["image"]
     
-    if os.path.exists(image_path):
-        await message.channel.send(
-            content=choice["text"],
-            file=discord.File(image_path)
-        )
+    choice = random.choice(RESPONSES)
+    img_path = choice["image"]
+    
+    if os.path.exists(img_path):
+        await message.channel.send(content=choice["text"], file=discord.File(img_path))
     else:
-        await message.channel.send(
-            content=f"{choice['text']}\n⚠️画像が見つかりません: `{image_path}`"
-        )
+        await message.channel.send(content=f"{choice['text']}\n⚠️画像が見つかりません")
 
-# ===== エラーハンドリング（必須）=====
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
-    print(f"コマンドエラー: {error}")
+    print(f"スラッシュコマンドエラー: {error}")
+    traceback.print_exc()
     if not interaction.response.is_done():
         await interaction.response.send_message("エラーが発生しました", ephemeral=True)
 
